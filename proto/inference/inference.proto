@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package inference;
+
+service Runtime {
+  rpc Run(SessionRequest) returns (SessionResponse) {}
+}
+
+message Tuple {
+  string name = 1;
+  repeated float values = 2;
+}
+
+message SessionRequest {
+  repeated Tuple array_map = 1;
+}
+
+message SessionResponse {
+  repeated Tuple array_map = 1;
+}

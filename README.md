@@ -82,4 +82,3 @@ The following Visual Studio Code extensions are highly recommended for working w
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details
-
