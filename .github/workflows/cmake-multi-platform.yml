@@ -52,7 +52,7 @@ jobs:
     - name: Install grpc_cpp_plugin
       if: runner.os == 'Linux'
       run: |
-        sudo apt-get install -y protobuf-compiler-grpc
+        sudo apt-get install -y protobuf-compiler protobuf-compiler-grpc
 
     - name: Set reusable strings
       # Turn repeated input strings (such as the build output directory) into step outputs. These step outputs can be used throughout the workflow file.
