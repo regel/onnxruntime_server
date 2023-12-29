@@ -11,8 +11,11 @@ add_subdirectory(proto)
 #include_directories(/usr/local/include)
 
 find_package(Threads REQUIRED)
-find_package(protobuf CONFIG REQUIRED)
+find_package(Protobuf CONFIG REQUIRED)
 find_package(gRPC CONFIG REQUIRED)
+
+message(STATUS "Using protobuf ${Protobuf_VERSION}")
+message(STATUS "Using gRPC ${gRPC_VERSION}")
 
 set(SOURCES
     onnxruntime_server.cpp
@@ -21,17 +24,16 @@ set(SOURCES
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${SOURCES})
 
 add_executable(onnxruntime_server ${SOURCES})
-target_link_directories(onnxruntime_server
-    PUBLIC
-        /usr/local/lib
-)
 target_link_libraries(onnxruntime_server
     PRIVATE
         inference
-    PUBLIC
         absl::base absl::flags
         absl::flags_parse
         absl::strings
 	#        onnxruntime
         fmt::fmt-header-only
+        protobuf::libprotobuf
+        gRPC::grpc
+        gRPC::grpc++
+        gRPC::grpc++_reflection
 )
