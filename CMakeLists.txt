@@ -3,14 +3,16 @@ project(onnxruntime_server)
 
 set(CMAKE_CXX_STANDARD 20)
 
+add_subdirectory(./third_party/fmt EXCLUDE_FROM_ALL)
 add_subdirectory(proto)
-add_subdirectory(./abseil-cpp)
-add_subdirectory(./fmt EXCLUDE_FROM_ALL)
 # Add onnxruntime library
 # add_subdirectory(./onnxruntime/cmake)
 
-include_directories(/usr/local/include)
+#include_directories(/usr/local/include)
 
+find_package(Threads REQUIRED)
+find_package(protobuf CONFIG REQUIRED)
+find_package(gRPC CONFIG REQUIRED)
 
 set(SOURCES
     onnxruntime_server.cpp
@@ -30,6 +32,6 @@ target_link_libraries(onnxruntime_server
         absl::base absl::flags
         absl::flags_parse
         absl::strings
-        onnxruntime
+	#        onnxruntime
         fmt::fmt-header-only
 )
