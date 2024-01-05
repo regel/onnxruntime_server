@@ -1,8 +1,13 @@
 cmake_minimum_required(VERSION 3.10)
-project(onnxruntime_server)
+project(onnxruntime_server LANGUAGES C CXX)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
-set(CMAKE_CXX_STANDARD 20)
+if (APPLE AND NOT DEFINED CMAKE_CXX_STANDARD)
+  message("CMAKE_CXX_STANDARD was undefined, defaulting to C++14.")
+  set(CMAKE_CXX_STANDARD 14)
+endif ()
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 add_subdirectory(./third_party/fmt EXCLUDE_FROM_ALL)
 add_subdirectory(proto)

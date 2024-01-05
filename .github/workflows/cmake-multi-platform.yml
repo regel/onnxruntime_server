@@ -70,10 +70,10 @@ jobs:
       with:
         path: |
           ${{ env.GRPC_INSTALL_DIR }}
-        key: ${{ runner.os }}-grpc-${{ env.GRPC_VERSION }}
+        key: ${{ runner.os }}-${{ runner.arch }}-${{ matrix.c_compiler }}-grpc-${{ env.GRPC_VERSION }}
         restore-keys: |
-          ${{ runner.os }}-grpc-${{ env.GRPC_VERSION }}
-          ${{ runner.os }}-grpc-
+          ${{ runner.os }}-${{ runner.arch }}-${{ matrix.c_compiler }}-grpc-${{ env.GRPC_VERSION }}
+          ${{ runner.os }}-${{ runner.arch }}-${{ matrix.c_compiler }}-grpc-
 
     - if: ${{ steps.cache-grpc.outputs.cache-hit != 'true' }}
       name: Build gRPC
@@ -85,6 +85,8 @@ jobs:
         pushd cmake/build
         cmake -DgRPC_INSTALL=ON \
               -DgRPC_BUILD_TESTS=OFF \
+              -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} \
+              -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} \
               -DCMAKE_INSTALL_PREFIX=${{ env.GRPC_INSTALL_DIR }} \
               ../..
         make -j 4
@@ -115,7 +117,11 @@ jobs:
       run: |
         mkdir -p ${{ env.ONNX_INSTALL_DIR }}
         if [[ $RUNNER_OS == "Linux" ]]; then
-          curl -s -L "https://github.com/microsoft/onnxruntime/releases/download/v${{ env.ONNX_VERSION }}/onnxruntime-linux-x64-${{ env.ONNX_VERSION }}.tgz" | tar xvz --strip-components=1 -C ${{ env.ONNX_INSTALL_DIR }}
+          if [[ $RUNNER_ARCH == "arm64" ]]; then
+            curl -s -L "https://github.com/microsoft/onnxruntime/releases/download/v${{ env.ONNX_VERSION }}/onnxruntime-linux-aarch64-${{ env.ONNX_VERSION }}.tgz" | tar xvz --strip-components=1 -C ${{ env.ONNX_INSTALL_DIR }}
+          else
+            curl -s -L "https://github.com/microsoft/onnxruntime/releases/download/v${{ env.ONNX_VERSION }}/onnxruntime-linux-x64-${{ env.ONNX_VERSION }}.tgz" | tar xvz --strip-components=1 -C ${{ env.ONNX_INSTALL_DIR }}
+          fi
         elif [[ $RUNNER_OS == "macOS" ]]; then
           if [[ $RUNNER_ARCH == "arm64" ]]; then
             curl -s -L "https://github.com/microsoft/onnxruntime/releases/download/v${{ env.ONNX_VERSION }}/onnxruntime-osx-arm64-${{ env.ONNX_VERSION }}.tgz" | tar xvz --strip-components=1 -C ${{ env.ONNX_INSTALL_DIR }}

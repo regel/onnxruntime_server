@@ -11,7 +11,6 @@
 #include <grpcpp/grpcpp.h>
 #include <onnxruntime_cxx_api.h>
 
-#include <filesystem>  // std::filesystem library, which was introduced in C++17
 #include <fstream>
 #include <iostream>
 #include <memory>
@@ -64,7 +63,7 @@ bool AbslParseFlag(absl::string_view text, RequiredFile* s,
     *error = "option is required but missing";
     return false;
   }
-  if (!std::filesystem::exists(s->path)) {
+  if (!std::ifstream(s->path)) {
     *error = fmt::format("File at '{}' does not exist", s->path);
     return false;
   }
@@ -81,7 +80,7 @@ using inference::Runtime;
 using inference::SessionRequest;
 using inference::SessionResponse;
 
-ABSL_FLAG(std::optional<RequiredFile>, model_path, std::nullopt,
+ABSL_FLAG(absl::optional<RequiredFile>, model_path, absl::nullopt,
           "Path to ONNX model");
 ABSL_FLAG(absl::LogSeverity, log_level, absl::LogSeverity::kInfo,
           "Logging level. Allowed options (case sensitive): info, warning, "
