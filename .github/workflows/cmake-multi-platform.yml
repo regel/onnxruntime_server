@@ -14,12 +14,19 @@ on:
         required: false
         type: string
         default: 'v1.60.0'
+      onnx-version:
+        description: 'Version of ONNX Runtime lib'
+        required: false
+        type: string
+        default: '1.16.3'
 
 jobs:
   build:
     env:
       GRPC_VERSION: ${{ inputs.grpc-version != '' && inputs.grpc-version || 'v1.60.0' }}
       GRPC_INSTALL_DIR: ${{ github.workspace }}/.grpc
+      ONNX_VERSION: ${{ inputs.onnx-version != '' && inputs.onnx-version || '1.16.3' }}
+      ONNX_INSTALL_DIR: ${{ github.workspace }}/.onnx
 
     runs-on: ${{ matrix.os }}
 
@@ -38,9 +45,6 @@ jobs:
         build_type: [Release]
         c_compiler: [gcc, clang, cl]
         include:
-          - os: windows-latest
-            c_compiler: cl
-            cpp_compiler: cl
           - os: ubuntu-latest
             c_compiler: gcc
             cpp_compiler: g++
@@ -95,6 +99,31 @@ jobs:
       run: |
         protoc --version
 
+    - name: Cache ONNX
+      id: cache-onnx
+      uses: actions/cache@v3
+      with:
+        path: |
+          ${{ env.ONNX_INSTALL_DIR }}
+        key: ${{ runner.os }}-${{ runner.arch }}-onnx-${{ env.ONNX_VERSION }}
+        restore-keys: |
+          ${{ runner.os }}-${{ runner.arch }}-onnx-${{ env.ONNX_VERSION }}
+          ${{ runner.os }}-${{ runner.arch }}-onnx-
+
+    - if: ${{ steps.cache-onnx.outputs.cache-hit != 'true' }}
+      name: Download ONNX Release
+      run: |
+        mkdir -p ${{ env.ONNX_INSTALL_DIR }}
+        if [[ $RUNNER_OS == "Linux" ]]; then
+          curl -s -L "https://github.com/microsoft/onnxruntime/releases/download/v${{ env.ONNX_VERSION }}/onnxruntime-linux-x64-${{ env.ONNX_VERSION }}.tgz" | tar xvz --strip-components=1 -C ${{ env.ONNX_INSTALL_DIR }}
+        elif [[ $RUNNER_OS == "macOS" ]]; then
+          if [[ $RUNNER_ARCH == "arm64" ]]; then
+            curl -s -L "https://github.com/microsoft/onnxruntime/releases/download/v${{ env.ONNX_VERSION }}/onnxruntime-osx-arm64-${{ env.ONNX_VERSION }}.tgz" | tar xvz --strip-components=1 -C ${{ env.ONNX_INSTALL_DIR }}
+          else
+            curl -s -L "https://github.com/microsoft/onnxruntime/releases/download/v${{ env.ONNX_VERSION }}/onnxruntime-osx-x86_64-${{ env.ONNX_VERSION }}.tgz" | tar xvz --strip-components=1 -C ${{ env.ONNX_INSTALL_DIR }}
+          fi
+        fi
+
     - name: Set reusable strings
       # Turn repeated input strings (such as the build output directory) into step outputs. These step outputs can be used throughout the workflow file.
       id: strings
@@ -111,6 +140,7 @@ jobs:
         -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
         -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
         -DCMAKE_PREFIX_PATH=${{ env.GRPC_INSTALL_DIR }}
+        -DONNXRuntime_ROOT_DIR=${{ env.ONNX_INSTALL_DIR }}
         -S ${{ github.workspace }}
 
     - name: Build
