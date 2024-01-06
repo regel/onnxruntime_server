@@ -30,6 +30,7 @@ add_library(onnxruntime_serving
 )
 target_link_libraries(onnxruntime_serving
         inference_grpc_proto
+        fmt::fmt-header-only
         protobuf::libprotobuf
         gRPC::grpc
         gRPC::grpc++
