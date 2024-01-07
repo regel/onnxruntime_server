@@ -106,7 +106,8 @@ void RunServer(const std::string& address, const int port,
 }
 
 int main(int argc, char** argv) {
-  absl::SetProgramUsageMessage("./onnxruntime_server --model_path trained.pt");
+  absl::SetProgramUsageMessage(
+      "./onnxruntime_server --model_path trained.onnx");
   absl::ParseCommandLine(argc, argv);
   QCHECK(absl::GetFlag(FLAGS_model_path).has_value())
       << "the option '--model_path' is required but missing";

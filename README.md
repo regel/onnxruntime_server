@@ -6,7 +6,7 @@ The CLI command to start the server is shown below:
 
 ```bash
 $ ./onnxruntime_server --helpfull
-onnxruntime_server: ./onnxruntime_server --model_path trained.pt
+onnxruntime_server: ./onnxruntime_server --model_path trained.onnx
 
   Flags from onnxruntime_server.cpp:
     --address (The base server address); default: "0.0.0.0";
@@ -50,11 +50,12 @@ Build the sources:
 ```
 % make
 ...
-[ 96%] Built target absl_random_internal_distribution_test_util
-[ 97%] Built target absl_status
-[ 98%] Built target absl_statusor
-[ 99%] Built target absl_cordz_sample_token
-[100%] Built target absl_bad_any_cast_impl
+[ 55%] Built target inference_grpc_proto
+[ 66%] Building CXX object CMakeFiles/onnxruntime_serving.dir/serving.cc.o
+[ 77%] Linking CXX static library libonnxruntime_serving.a
+[ 77%] Built target onnxruntime_serving
+[ 88%] Linking CXX executable onnxruntime_server
+[100%] Built target onnxruntime_server
 ```
 
 ## Built With
