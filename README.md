@@ -36,13 +36,24 @@ git submodule init
 git submodule update
 ```
 
+Download the ONNX Runtime [Release](https://github.com/microsoft/onnxruntime/releases) for your architecture.
+
+You also need to build and install gRPC. Follow the gRPC [Quick start](https://grpc.io/docs/languages/cpp/quickstart/)
+
+## View ONNX Model Properties
+
+View and inspect ONNX model properties using [Netron](https://netron.app/) and note model input names and expected tensor sizes.
+
+`onnxruntime_server` implements a gRPC service that consumes input names in gRPC requests and produces output names
+in gRPC responses that directly map to ONNX model properties.
+
 ## Build
 
 Generate the Makefile:
 
 ```
-% mkdir build && cd build
-% cmake ..
+% mkdir -p build && cd build
+% cmake -DCMAKE_PREFIX_PATH=/<your>/<grpc>/<path> -DONNXRuntime_ROOT_DIR=/<your>/<onnxruntime>/<path>/onnxruntime-osx-x86_64-1.16.3 ..
 ```
 
 Build the sources:
