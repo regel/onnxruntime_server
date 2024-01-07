@@ -58,18 +58,41 @@ Serving::Serving(const std::string& model_path) : model_path_(model_path) {
     throw std::runtime_error("File does not exist");
   }
   global_init(model_path);
+  CheckStatus(Serving::g_ort, Serving::g_ort->SessionGetInputCount(
+                                  Serving::g_session, &this->num_input_nodes));
+  CheckStatus(Serving::g_ort, Serving::g_ort->SessionGetOutputCount(
+                                  Serving::g_session, &this->num_output_nodes));
+  this->input_node_names.resize(this->num_input_nodes);
+  for (size_t i = 0; i < this->num_input_nodes; i++) {
+    // Get input node names
+    char* input_name = nullptr;
+    CheckStatus(Serving::g_ort,
+                Serving::g_ort->SessionGetInputName(
+                    Serving::g_session, i, Serving::g_allocator, &input_name));
+    this->input_node_names[i] = input_name;
+  }
+  this->output_node_names.resize(this->num_output_nodes);
+  for (size_t j = 0; j < this->num_output_nodes; j++) {
+    char* output_name = nullptr;
+    CheckStatus(Serving::g_ort,
+                Serving::g_ort->SessionGetOutputName(
+                    Serving::g_session, j, Serving::g_allocator, &output_name));
+    this->output_node_names[j] = output_name;
+  }
 }
 
 grpc::Status Serving::Run(grpc::ServerContext* context,
                           const inference::SessionRequest* request,
                           inference::SessionResponse* reply) {
-  size_t num_input_nodes;
-  CheckStatus(Serving::g_ort, Serving::g_ort->SessionGetInputCount(
-                                  Serving::g_session, &num_input_nodes));
+  std::vector<OrtValue*> input_tensors;
+  std::vector<OrtValue*> output_tensors;
 
-  for (size_t i = 0; i < num_input_nodes; i++) {
+  input_tensors.resize(this->num_input_nodes);
+  output_tensors.resize(this->num_output_nodes);
+
+  for (size_t i = 0; i < this->num_input_nodes; i++) {
     // Get input node names
-    char* input_name;
+    char* input_name = nullptr;
     CheckStatus(Serving::g_ort,
                 Serving::g_ort->SessionGetInputName(
                     Serving::g_session, i, Serving::g_allocator, &input_name));
@@ -87,8 +110,10 @@ grpc::Status Serving::Run(grpc::ServerContext* context,
           grpc::StatusCode::INVALID_ARGUMENT,
           fmt::format("Input name '{}' not found in request", input_name));
     }
+
     OrtTypeInfo* type_info = nullptr;
     const OrtTensorTypeAndShapeInfo* tensor_info;
+    ONNXTensorElementDataType input_type;
     size_t tensor_size;
     CheckStatus(Serving::g_ort, Serving::g_ort->SessionGetInputTypeInfo(
                                     Serving::g_session, i, &type_info));
@@ -96,6 +121,8 @@ grpc::Status Serving::Run(grpc::ServerContext* context,
                                     type_info, &tensor_info));
     CheckStatus(Serving::g_ort, Serving::g_ort->GetTensorShapeElementCount(
                                     tensor_info, &tensor_size));
+    CheckStatus(Serving::g_ort,
+                Serving::g_ort->GetTensorElementType(tensor_info, &input_type));
     if (type_info) Serving::g_ort->ReleaseTypeInfo(type_info);
 
     if (found_tuple->values_size() != tensor_size) {
@@ -104,6 +131,55 @@ grpc::Status Serving::Run(grpc::ServerContext* context,
           fmt::format("Invalid input size. Expected: '{}' Got: '{}'",
                       tensor_size, found_tuple->values_size()));
     }
+    const ::google::protobuf::RepeatedField<float>& data_repeated =
+        found_tuple->values();
+    std::vector<float> data(data_repeated.begin(), data_repeated.end());
+    int64_t shape[2] = {1, static_cast<int64_t>(tensor_size)};
+    size_t shape_len = 2;
+    OrtMemoryInfo* memory_info;
+    CheckStatus(Serving::g_ort,
+                Serving::g_ort->CreateCpuMemoryInfo(
+                    OrtArenaAllocator, OrtMemTypeDefault, &memory_info));
+    CheckStatus(Serving::g_ort,
+                Serving::g_ort->CreateTensorWithDataAsOrtValue(
+                    memory_info, reinterpret_cast<void*>(data.data()),
+                    data.size() * sizeof(float), shape, shape_len, input_type,
+                    &input_tensors[i]));
+    Serving::g_ort->ReleaseMemoryInfo(memory_info);
+  }
+  CheckStatus(Serving::g_ort,
+              Serving::g_ort->Run(
+                  Serving::g_session, nullptr, this->input_node_names.data(),
+                  (const OrtValue* const*)input_tensors.data(),
+                  input_tensors.size(), this->output_node_names.data(),
+                  this->output_node_names.size(), output_tensors.data()));
+
+  for (size_t i = 0; i < this->num_input_nodes; i++) {
+    if (input_tensors[i]) Serving::g_ort->ReleaseValue(input_tensors[i]);
+  }
+  for (size_t j = 0; j < this->num_output_nodes; j++) {
+    inference::Tuple new_tuple;
+    OrtTypeInfo* type_info = nullptr;
+    const OrtTensorTypeAndShapeInfo* tensor_info;
+    size_t tensor_size;
+    CheckStatus(Serving::g_ort, Serving::g_ort->SessionGetOutputTypeInfo(
+                                    Serving::g_session, j, &type_info));
+    CheckStatus(Serving::g_ort, Serving::g_ort->CastTypeInfoToTensorInfo(
+                                    type_info, &tensor_info));
+    CheckStatus(Serving::g_ort, Serving::g_ort->GetTensorShapeElementCount(
+                                    tensor_info, &tensor_size));
+
+    void* output_buffer;
+    CheckStatus(Serving::g_ort, Serving::g_ort->GetTensorMutableData(
+                                    output_tensors[j], &output_buffer));
+    float* float_buffer = reinterpret_cast<float*>(output_buffer);
+
+    for (size_t k = 0; k < tensor_size; k++) {
+      new_tuple.add_values(float_buffer[k]);
+    }
+    new_tuple.set_name(this->output_node_names[j]);
+    reply->mutable_array_map()->Add()->CopyFrom(new_tuple);
+    if (output_tensors[j]) Serving::g_ort->ReleaseValue(output_tensors[j]);
   }
   return grpc::Status::OK;
 }

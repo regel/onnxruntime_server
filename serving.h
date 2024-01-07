@@ -15,6 +15,10 @@ class Serving final : public inference::Runtime::Service {
   static OrtEnv* g_env;
   static OrtSession* g_session;
   static OrtAllocator* g_allocator;
+  size_t num_input_nodes;
+  std::vector<const char*> input_node_names;
+  size_t num_output_nodes;
+  std::vector<const char*> output_node_names;
 
   static void global_init(const std::string& model_path);
 
