@@ -1,0 +1,7 @@
+**
+!*.h
+!*.cc
+!**/CMakeLists.txt
+!third_party
+!cmake
+!proto/inference/*.proto
